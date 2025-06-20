@@ -1,5 +1,35 @@
 # Release note
 
+## v0.9.1rc1 - 2025.06.22
+
+This is the 1st release candidate of v0.9.1 for vLLM Ascend. Please follow the [official doc](https://vllm-ascend.readthedocs.io/en/) to get started.
+
+### Highlights
+- **Atlas 300I Duo** is now supported in this release. Please note that this is initial support only. The quality and performance may not be optimal, so for the next release candidate and official release of 0.9.1, this feature will not be supporeted. It'll be back from 0.9.2 release in the future.
+
+### Core
+- The version of **torch_npu** has been updated to `2.5.1.post1.dev20250528`. Don’t forget to update it in your environment. [#1235](https://github.com/vllm-project/vllm-ascend/pull/1235)
+- The Docker image for **Atlas 300I Duo** has been published. You can get it from [quay.io](https://quay.io/repository/vllm/vllm-ascend?tag=v0.9.1a1)
+- **Chunked Prefill** now works together with **MLA**. [#1172](https://github.com/vllm-project/vllm-ascend/pull/1172)
+- **Aclgraph mode** now works with **Parallelism**. [#1300](https://github.com/vllm-project/vllm-ascend/pull/1300)
+
+### Model
+- **MoGE model** is now supported. You can try it with **PanguProMoe-72B**. Both **Atlas 800I A2** and **Atlas 300I Duo** have been well tested. Please follow the official [tutorials](https://vllm-ascend.readthedocs.io/en/latest/user_guide/moe.html) to give it a try. [#1204](https://github.com/vllm-project/vllm-ascend/pull/1204)
+
+### Other Improvements
+- An example for best practices to run **DeepSeek** with **ETP** has been added. [#1101](https://github.com/vllm-project/vllm-ascend/pull/1101)
+- Performance improvements for **DeepSeek** using the **TorchAir graph**. [#1098](https://github.com/vllm-project/vllm-ascend/pull/1098), [#1131](https://github.com/vllm-project/vllm-ascend/pull/1131)
+- **AscendScheduler** now supports the speculative decoding feature. [#943](https://github.com/vllm-project/vllm-ascend/pull/943)
+- A new custom op, `VocabParallelEmbedding`, has been added with better performance. It will be enabled in the next release. [#796](https://github.com/vllm-project/vllm-ascend/pull/796)
+- Fixed a bug when running vLLM Ascend on **Ray** — devices are now set correctly. [#884](https://github.com/vllm-project/vllm-ascend/pull/884)
+- **DeepSeek with MC2** now works properly. [#1268](https://github.com/vllm-project/vllm-ascend/pull/1268)
+- Fixed a bug related to the use of the static **EPLB** feature. [#1186](https://github.com/vllm-project/vllm-ascend/pull/1186)
+- Improved performance for **DeepSeek with DBO** enabled. [#997](https://github.com/vllm-project/vllm-ascend/pull/997), [#1135](https://github.com/vllm-project/vllm-ascend/pull/1135)
+
+### Known Issues
+- In some cases, the vLLM process may crash with a **gatherV3** error when **aclgraph** is enabled. We are working on this issue and will fix it in the next release.
+- The **prefix cache** feature does not work with the **Ascend Scheduler**. **Chunked Prefill** should be enabled as well. This will be fixed in the next release.
+
 ## v0.9.0rc2 - 2025.06.10
 
 This release contains some quick fixes for v0.9.0rc1. Please use this release instead of v0.9.0rc1.

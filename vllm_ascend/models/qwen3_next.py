@@ -1046,19 +1046,25 @@ class Qwen3NextDecoderLayer(nn.Module):
                 hidden_states, residual)
 
         self_attention_output = torch.empty_like(hidden_states)
-        if self.layer_type == "linear_attention":
-            self.linear_attn(
-                hidden_states=hidden_states,
-                output=self_attention_output,
-            )
-        elif self.layer_type == "full_attention":
+        # if self.layer_type == "linear_attention":
+        #     self.linear_attn(
+        #         hidden_states=hidden_states,
+        #         output=self_attention_output,
+        #     )
+        # elif self.layer_type == "full_attention":
+        #     self.self_attn(
+        #         hidden_states=hidden_states,
+        #         output=self_attention_output,
+        #         positions=positions,
+        #     )
+        # else:
+        #     raise ValueError("Invalid layer_type")
+        if self.layer_type == "full_attention":
             self.self_attn(
                 hidden_states=hidden_states,
                 output=self_attention_output,
                 positions=positions,
             )
-        else:
-            raise ValueError("Invalid layer_type")
         hidden_states = self_attention_output
 
         if self.layer_scale:

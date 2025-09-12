@@ -450,6 +450,7 @@ class NPUModelRunner(LoRAModelRunnerMixin):
                 self.is_pooling_model,
                 self.vllm_config.model_config.logits_processors),
             is_pooling_model=self.is_pooling_model,
+            kernel_block_sizes=None,
         )
         self.num_accepted_tokens = self._make_buffer(self.max_num_reqs,
                                                      dtype=torch.int64)
@@ -2776,6 +2777,41 @@ class NPUModelRunner(LoRAModelRunnerMixin):
             kv_cache_group.kv_cache_spec.block_size
             for kv_cache_group in kv_cache_config.kv_cache_groups
         ]
+
+        # Generate kernel_block_sizes that matches each block_size
+        # For attention backends that support virtual block splitting,
+        # use the supported block sizes from the backend
+        # For other backends (like Mamba), use [0] (no splitting)
+        kernel_block_sizes = []
+        for kv_cache_group_id, kv_cache_group in enumerate(
+                kv_cache_config.kv_cache_groups):
+            if isinstance(kv_cache_group.kv_cache_spec, AttentionSpec):
+                # This is an attention backend that supports virtual
+                # block splitting. Get the supported block sizes from
+                # the backend.
+                try:
+                    attn_groups = self.attn_groups[kv_cache_group_id]
+                except IndexError:
+                    attn_groups = None
+                if attn_groups:
+                    # Use the backend's supported block size list
+                    backend = attn_groups[0].backend
+                    supported_sizes = backend.get_supported_block_size()
+                    # If no specific sizes supported, use cache config
+                    # block_size
+                    kernel_block_size_list = (supported_sizes
+                                              if supported_sizes else
+                                              [self.cache_config.block_size])
+                    print(f"---------------kernel_block_size_list: {kernel_block_size_list}")
+                else:
+                    # Fallback to cache config block_size if no backend found
+                    kernel_block_size_list = [self.cache_config.block_size]
+                kernel_block_sizes.append(kernel_block_size_list)
+            else:
+                # This is likely Mamba or other non-attention cache,
+                # no splitting.
+                kernel_block_sizes.append([0])
+
         if block_sizes != [self.cache_config.block_size]:
             assert self.cache_config.cpu_offload_gb == 0, (
                 "Cannot re-initialize the input batch when CPU weight "
@@ -2795,6 +2831,7 @@ class NPUModelRunner(LoRAModelRunnerMixin):
                 num_speculative_tokens=(
                     self.vllm_config.speculative_config.num_speculative_tokens
                     if self.vllm_config.speculative_config else 0),
+                kernel_block_sizes=kernel_block_sizes,
             )
 
     def initialize_attn_backend(self, kv_cache_config: KVCacheConfig) -> None:

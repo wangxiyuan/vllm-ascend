@@ -585,7 +585,6 @@ def unified_ascend_attention_with_output(
         attn_metadata = attn_metadata[layer_name]
     self = forward_context.no_compile_layers[layer_name]
     kv_cache = self.kv_cache[forward_context.virtual_engine]
-    print(f"kv_cache: {kv_cache.shape}")
     if kv_cache.numel() != 0:
         block_size_chunk = kv_cache.shape[2] // 64
         kv_cache = kv_cache.view(2, kv_cache.shape[1] * block_size_chunk, kv_cache.shape[2] // block_size_chunk, kv_cache.shape[3], kv_cache.shape[4])

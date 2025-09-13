@@ -2720,8 +2720,8 @@ class NPUModelRunner(LoRAModelRunnerMixin):
                     # KV cache specs.
                     raise ValueError("Unknown KV cache spec type.")
 
-        # if has_attn and has_mamba:
-        #     self._update_hybrid_attention_mamba_layout(kv_caches)
+        if has_attn and has_mamba:
+            self._update_hybrid_attention_mamba_layout(kv_caches)
 
         bind_kv_cache(kv_caches,
                       self.compilation_config.static_forward_context,
@@ -2742,7 +2742,6 @@ class NPUModelRunner(LoRAModelRunnerMixin):
         for kv_cache_spec, group in self._kv_cache_spec_attn_group_iterator():
             for layer_name in group.layer_names:
                 kv_cache = kv_caches[layer_name]
-                print(60 * "*", type(kv_cache), kv_cache_spec)
                 if (isinstance(kv_cache_spec, AttentionSpec)
                         and kv_cache.shape[0] == 2):
                     assert kv_cache.shape[1] != 2, \
@@ -2802,7 +2801,6 @@ class NPUModelRunner(LoRAModelRunnerMixin):
                     kernel_block_size_list = (supported_sizes
                                               if supported_sizes else
                                               [self.cache_config.block_size])
-                    print(f"---------------kernel_block_size_list: {kernel_block_size_list}")
                 else:
                     # Fallback to cache config block_size if no backend found
                     kernel_block_size_list = [self.cache_config.block_size]

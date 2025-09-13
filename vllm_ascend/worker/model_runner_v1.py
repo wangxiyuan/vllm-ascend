@@ -2720,8 +2720,8 @@ class NPUModelRunner(LoRAModelRunnerMixin):
                     # KV cache specs.
                     raise ValueError("Unknown KV cache spec type.")
 
-        if has_attn and has_mamba:
-            self._update_hybrid_attention_mamba_layout(kv_caches)
+        # if has_attn and has_mamba:
+        #     self._update_hybrid_attention_mamba_layout(kv_caches)
 
         bind_kv_cache(kv_caches,
                       self.compilation_config.static_forward_context,

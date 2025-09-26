@@ -189,7 +189,7 @@ class Qwen3NextGatedDeltaNet(nn.Module, MambaBase):
                                           input_is_parallel=True,
                                           quant_config=quant_config,
                                           prefix=f"{prefix}.out_proj")
-
+        print("try_get_current_vllm_config, Qwen3NextGatedDeltaNet--------------------------------------")
         compilation_config = get_current_vllm_config().compilation_config
         if prefix in compilation_config.static_forward_context:
             raise ValueError(f"Duplicate layer name: {prefix}")

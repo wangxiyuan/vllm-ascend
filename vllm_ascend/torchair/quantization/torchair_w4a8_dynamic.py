@@ -40,6 +40,7 @@ class TorchairAscendW4A8DynamicLinearMethod:
     def __init__(self):
         self.transpose_weight = True
         try:
+            print("try_get_current_vllm_config, TorchairAscendW4A8DynamicLinearMethod--------------------------------------")
             self.group_size = get_current_vllm_config(
             ).quant_config.quant_description.get("group_size", 256)
         except AttributeError:
@@ -135,7 +136,7 @@ class TorchairAscendW4A8DynamicFusedMoEMethod:
 
         ascend_config = get_ascend_config()
         self.torchair_graph_enabled = ascend_config.torchair_graph_config.enabled
-
+        print("try_get_current_vllm_config, TorchairAscendW4A8DynamicFusedMoEMethod--------------------------------------")
         vllm_config = get_current_vllm_config()
         self.group_size = vllm_config.quant_config.quant_description.get(
             "group_size", 256)

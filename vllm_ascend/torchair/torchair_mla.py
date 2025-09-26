@@ -671,7 +671,7 @@ class AscendMLATorchairImpl(MLAAttentionImpl):
         self.running_in_graph = False
         self.prefill_mask = None
         self.ring_mla_mask_size = 512
-
+        print("try_get_current_vllm_config, AscendMLATorchairImpl--------------------------------------")
         self.speculative_config = get_current_vllm_config().speculative_config
 
     def _v_up_proj_and_o_proj(self, x, enable_multistream_mla: bool = False):

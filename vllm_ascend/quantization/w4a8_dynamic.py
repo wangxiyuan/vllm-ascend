@@ -36,6 +36,7 @@ class AscendW4A8DynamicLinearMethod:
     def __init__(self):
         self.transpose_weight = True
         try:
+            print("try_get_current_vllm_config, AscendW4A8DynamicLinearMethod--------------------------------------")
             self.group_size = get_current_vllm_config(
             ).quant_config.quant_description.get("group_size", 256)
         except AttributeError:
@@ -128,7 +129,7 @@ class AscendW4A8DynamicFusedMoEMethod:
         self.transpose_weight = True
 
         self.ep_group = get_ep_group()
-
+        print("try_get_current_vllm_config, AscendW4A8DynamicFusedMoEMethod--------------------------------------")
         vllm_config = get_current_vllm_config()
         self.group_size = vllm_config.quant_config.quant_description.get(
             "group_size", 256)

@@ -47,6 +47,7 @@ def unquantized_fused_moe_init_func(self, *args, **kwargs):
     # UnquantizedFusedMoEMethod.forward_oot to decide whether to use in
     # ops/fused_moe.py:568 to circumvent torch.randint_like not supported issue.
     # Once torch.randint_like is supported or removed, this flag can be removed.
+    print("try_get_current_vllm_config, unquantized_fused_moe_init_func--------------------------------------")
     vllm_config = get_current_vllm_config()
     ascend_config = get_ascend_config()
     if ascend_config.torchair_graph_config.enabled:

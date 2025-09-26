@@ -108,7 +108,7 @@ class AscendMultiHeadLatentAttention(MultiHeadLatentAttention):
             kv_b_proj=mla_modules.kv_b_proj,
             o_proj=mla_modules.o_proj,
         )
-
+        print("try_get_current_vllm_config, AscendMultiHeadLatentAttention--------------------------------------")
         compilation_config = get_current_vllm_config().compilation_config
         if prefix in compilation_config.static_forward_context:
             raise ValueError(f"Duplicate layer name: {prefix}")

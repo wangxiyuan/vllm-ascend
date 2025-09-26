@@ -495,7 +495,7 @@ class AscendMLAImpl(MLAAttentionImpl):
         self.enable_shared_expert_dp = ascend_config.enable_shared_expert_dp
         self.enable_prefetch = ascend_config.enable_prefetch
         self.enable_kv_nz = ascend_config.torchair_graph_config.enable_kv_nz
-
+        print("try_get_current_vllm_config, AscendMLAImpl--------------------------------------")
         vllm_config = get_current_vllm_config()
         self.ring_mla_mask_size = 512
         self.prefill_mask = None

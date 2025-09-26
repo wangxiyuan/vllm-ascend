@@ -116,7 +116,7 @@ class AscendW8A8DynamicFusedMoEMethod:
         self.transpose_weight = True
 
         self.ep_group = get_ep_group()
-
+        print("try_get_current_vllm_config, AscendW8A8DynamicFusedMoEMethod--------------------------------------")
         vllm_config = get_current_vllm_config()
         ascend_config = get_ascend_config()
         self.use_aclgraph = (

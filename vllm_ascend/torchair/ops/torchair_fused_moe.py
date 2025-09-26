@@ -796,6 +796,7 @@ class TorchairAscendUnquantizedFusedMoEMethod(UnquantizedFusedMoEMethod):
     def __init__(self, moe: FusedMoEConfig = None):
 
         super().__init__(moe=moe)
+        print("try_get_current_vllm_config, TorchairAscendUnquantizedFusedMoEMethod--------------------------------------")
         vllm_config = get_current_vllm_config()
 
         self.global_batch_size = vllm_config.scheduler_config.max_num_seqs
@@ -980,7 +981,7 @@ class TorchairAscendFusedMoE(FusedMoE):
 
         if params_dtype is None:
             params_dtype = torch.get_default_dtype()
-
+        print("try_get_current_vllm_config, TorchairAscendFusedMoE--------------------------------------")
         vllm_config = get_current_vllm_config()
 
         self.moe_parallel_config = FusedMoEParallelConfig.make(

@@ -54,6 +54,7 @@ class MoECommMethod(ABC):
     """Base class for MoE communication methods."""
 
     def __init__(self, moe_config: FusedMoEConfig):
+        print("try_get_current_vllm_config, MoECommMethod--------------------------------------")
         self.model_type = get_current_vllm_config(
         ).model_config.hf_config.model_type
         self.moe_config = moe_config

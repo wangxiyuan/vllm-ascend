@@ -63,6 +63,7 @@ class CustomDeepSeekMultiTokenPredictorLayer(DeepSeekMultiTokenPredictorLayer):
         quant_config: Optional[QuantizationConfig] = None,
     ) -> None:
         nn.Module.__init__(self)
+        print("try_get_current_vllm_config, CustomDeepSeekMultiTokenPredictorLayer--------------------------------------")
         vllm_config = get_current_vllm_config()
 
         self.enorm = RMSNorm(config.hidden_size, eps=config.rms_norm_eps)

@@ -18,6 +18,7 @@
 #
 
 import copy
+import gc
 from types import NoneType
 from typing import Optional
 
@@ -141,7 +142,7 @@ class NPUWorker(WorkerBase):
         self.use_v2_model_runner = envs_vllm.VLLM_USE_V2_MODEL_RUNNER
 
     def sleep(self, level: int = 1) -> None:
-        free_bytes_before_sleep = NPUPlatform.mem_get_info()[0]
+        free_bytes_before_sleep = torch.npu.mem_get_info()[0]
         # Save the buffers before level 2 sleep
         if level == 2:
             model = self.model_runner.model
@@ -151,7 +152,7 @@ class NPUWorker(WorkerBase):
             }
         allocator = CaMemAllocator.get_instance()
         allocator.sleep(offload_tags=("weights", ) if level == 1 else tuple())
-        free_bytes_after_sleep, total = NPUPlatform.mem_get_info()
+        free_bytes_after_sleep, total = torch.npu.mem_get_info()
         freed_bytes = free_bytes_after_sleep - free_bytes_before_sleep
         used_bytes = total - free_bytes_after_sleep
         assert freed_bytes >= 0, "Memory usage increased after sleeping."
@@ -202,8 +203,8 @@ class NPUWorker(WorkerBase):
 
     def _init_device(self):
         device = torch.device(f"npu:{self.local_rank}")
-        NPUPlatform.set_device(device)
-        NPUPlatform.empty_cache()
+        torch.npu.set_device(device)
+        torch.npu.empty_cache()
 
         if (self.parallel_config.data_parallel_size > 1
                 and self.parallel_config.data_parallel_size_local > 0
@@ -218,7 +219,7 @@ class NPUWorker(WorkerBase):
                 f"be less than or equal to the number of visible devices "
                 f"({visible_device_count}).")
 
-        self.init_npu_memory = NPUPlatform.mem_get_info()[0]
+        self.init_npu_memory = torch.npu.mem_get_info()[0]
         # Initialize the distributed environment.
         self._init_worker_distributed_environment()
         # Set random seed.
@@ -250,16 +251,18 @@ class NPUWorker(WorkerBase):
     def determine_available_memory(self) -> int:
         # Profile the memory usage of the model and get the maximum number of
         # cache blocks that can be allocated with the remaining free memory.
-        NPUPlatform.clear_npu_memory()
+        gc.collect()
+        torch.npu.empty_cache()
+        torch.npu.reset_peak_memory_stats()
 
         # Execute a forward pass with dummy inputs to profile the memory usage
         # of the model.
-        _, total_npu_memory = NPUPlatform.mem_get_info()
+        _, total_npu_memory = torch.npu.mem_get_info()
         self.model_runner.profile_run()
 
         # Calculate the number of blocks that can be allocated with the
         # profiled peak memory.
-        free_npu_memory, _ = NPUPlatform.mem_get_info()
+        free_npu_memory, _ = torch.npu.mem_get_info()
         # NOTE(woosuk): Here we assume that the other processes using the same
         # GPU did not change their memory usage during the profiling.
         assert self.init_npu_memory > free_npu_memory, (
@@ -272,7 +275,7 @@ class NPUWorker(WorkerBase):
         peak_memory = torch_npu.npu.memory_stats()["allocated_bytes.all.peak"]
         # TODO: don`t need impl this func after empty_cache in
         # Worker.determine_num_available_blocks() unified`
-        NPUPlatform.empty_cache()
+        torch.npu.empty_cache()
         torch_allocated_bytes = torch_npu.npu.memory_stats(
         )["allocated_bytes.all.current"]
         total_allocated_bytes = torch_npu.npu.mem_get_info(

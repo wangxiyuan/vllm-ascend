@@ -2,7 +2,7 @@
 
 ## Output Instructions
 
-**IMPORTANT**: When generating PR summaries and titles, you MUST output them in code blocks so users can easily copy them:
+**IMPORTANT**: When doing PR review, you MUST output them in markdown code blocks so users can easily copy them:
 
 1. **PR Title**: Output the generated title in a code block with triple backticks
 2. **PR Summary**: Output the generated summary in a markdown code block with triple backticks
@@ -84,3 +84,5 @@ Your assessment of user-facing changes.
 
 Your description of testing approach.
 ```
+
+And please print your review suggestion in markdown foramt.

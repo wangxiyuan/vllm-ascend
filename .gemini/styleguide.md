@@ -46,7 +46,7 @@ The summary should also refresh the Pull Request Title to follow the format:
     [Branch][Module][Action] Pull Request Title
     ```
 
-- Branch: The branch name where the PR is based.
+- Branch: The branch name where the PR is based. If the base branch is main, this prefix can be omitted.
 - Module: The module or component being changed. It includes but is not limited to the following:
     - [Attention]
     - [Ops]

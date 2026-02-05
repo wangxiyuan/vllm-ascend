@@ -2,14 +2,11 @@ from typing import cast
 
 import torch
 from vllm.distributed.parallel_state import get_pp_group
-from vllm.logger import logger
 from vllm.model_executor.models.interfaces_base import VllmModelForPooling
 from vllm.sampling_params import SamplingType
 from vllm.v1.core.sched.output import SchedulerOutput
 from vllm.v1.worker.gpu_input_batch import CachedRequestState
 from vllm.v1.worker.gpu_model_runner import GPUModelRunner
-
-from vllm_ascend.utils import vllm_version_is
 
 
 # The current version of `GPUModelRunner._update_states` is v0.13.0.
@@ -290,9 +287,4 @@ def _update_states(self, scheduler_output: "SchedulerOutput") -> None:
     self.input_batch.refresh_metadata()
 
 
-if vllm_version_is('0.13.0'):
-    GPUModelRunner._update_states = _update_states
-else:
-    logger.warning(
-        "vllm_version is not v0.13.0, patch GPUModelRunner._update_states failed!"
-    )
+GPUModelRunner._update_states = _update_states

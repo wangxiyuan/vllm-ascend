@@ -47,8 +47,6 @@ from vllm.v1.sample.rejection_sampler import PLACEHOLDER_TOKEN_ID
 from vllm.v1.spec_decode.metrics import SpecDecodingStats
 from vllm.v1.utils import ConstantList, record_function_or_nullcontext
 
-from vllm_ascend.utils import vllm_version_is
-
 logger = init_logger(__name__)
 
 
@@ -100,8 +98,7 @@ class RecomputeScheduler(Scheduler):
         # the KV cache of one request from prefill nodes.
         self.is_mtp_kv_consumer = self.vllm_config.speculative_config and \
                                   self.vllm_config.kv_transfer_config and \
-                                  self.vllm_config.kv_transfer_config.is_kv_consumer \
-                                    and vllm_version_is('0.13.0')
+                                  self.vllm_config.kv_transfer_config.is_kv_consumer
 
     def add_request(self, request: Request) -> None:
         # Fill in placeholder tokens to enable full graph compatibility. Without

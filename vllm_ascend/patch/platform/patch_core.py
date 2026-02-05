@@ -9,7 +9,6 @@ from vllm.utils.system_utils import decorate_logs, set_process_title
 from vllm.v1.engine.core import DPEngineCoreProc, EngineCoreProc
 
 from vllm_ascend import envs
-from vllm_ascend.utils import vllm_version_is
 
 
 def run_engine_core(*args, dp_rank: int = 0, local_dp_rank: int = 0, **kwargs):
@@ -46,8 +45,7 @@ def run_engine_core(*args, dp_rank: int = 0, local_dp_rank: int = 0, **kwargs):
             # Set data parallel rank for this engine process.
             parallel_config.data_parallel_rank = dp_rank
             parallel_config.data_parallel_rank_local = local_dp_rank
-            if envs.VLLM_ASCEND_BALANCE_SCHEDULING and vllm_version_is(
-                    "0.13.0"):
+            if envs.VLLM_ASCEND_BALANCE_SCHEDULING:
                 from vllm_ascend.patch.platform.patch_balance_schedule import \
                     BalanceDPEngineCoreProc
                 engine_core = BalanceDPEngineCoreProc(*args, **kwargs)

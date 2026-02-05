@@ -109,7 +109,7 @@ from vllm_ascend.utils import (AscendDeviceType, ProfileExecuteDuration,
                                enable_sp, get_ascend_device_type,
                                is_drafter_moe_model, is_moe_model,
                                lmhead_tp_enable, maybe_trans_nz,
-                               set_weight_prefetch_method, vllm_version_is)
+                               set_weight_prefetch_method)
 from vllm_ascend.worker.npu_input_batch import NPUInputBatch
 from vllm_ascend.worker.pcp_utils import PCPManager
 
@@ -772,10 +772,8 @@ class NPUModelRunner(GPUModelRunner):
 
         # _prepare_inputs may reorder the batch, so we must gather
         # multi-modal outputs after that to ensure the correct order
-        if vllm_version_is('0.13.0'):
-            model_kwargs = self._init_model_kwargs(num_input_tokens)
-        else:
-            model_kwargs = self._init_model_kwargs()
+        model_kwargs = self._init_model_kwargs(num_input_tokens)
+
         if self.is_multimodal_model and not self.model_config.is_encoder_decoder:
             self.multimodal_cpu_fields = ["grid_thw"]
             self._prepare_multimodal_fields()
@@ -1606,16 +1604,11 @@ class NPUModelRunner(GPUModelRunner):
                 logits = None
             else:
                 if self.input_batch.pooling_params:
-                    if vllm_version_is('0.13.0'):
-                        pool_output = self._pool(
-                            hidden_states,
-                            scheduler_output.total_num_scheduled_tokens,
-                            num_scheduled_tokens_np)
-                    else:
-                        pool_output = self._pool(
-                            hidden_states,
-                            scheduler_output.total_num_scheduled_tokens,
-                            num_scheduled_tokens_np, kv_connector_output)
+                    pool_output = self._pool(
+                        hidden_states,
+                        scheduler_output.total_num_scheduled_tokens,
+                        num_scheduled_tokens_np)
+
                     if self.debugger is not None:
                         self.debugger.stop()
                         self.debugger.step()

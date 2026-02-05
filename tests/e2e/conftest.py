@@ -922,7 +922,4 @@ PROMPT_CONFIGS = {
 
 @pytest.fixture(params=PROMPT_CONFIGS.keys())
 def vl_config(request):
-    config = PROMPT_CONFIGS[request.param]
-    if "skip" in config:
-        pytest.skip(config["skip"])
-    return config
+    return PROMPT_CONFIGS[request.param]

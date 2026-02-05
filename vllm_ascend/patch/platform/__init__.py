@@ -18,7 +18,6 @@ import os
 
 import vllm_ascend.patch.platform.patch_distributed  # noqa
 import vllm_ascend.patch.platform.patch_ec_connector  # noqa
-import vllm_ascend.patch.platform.patch_kv_cache_utils  # noqa
 import vllm_ascend.patch.platform.patch_lora_model_manager  # noqa
 import vllm_ascend.patch.platform.patch_mamba_config  # noqa
 import vllm_ascend.patch.platform.patch_sched_yield  # noqa
@@ -32,10 +31,6 @@ if USE_MULTI_BLOCK_POOL:
     import vllm_ascend.patch.platform.patch_kv_cache_utils  # noqa
     import vllm_ascend.patch.platform.patch_vllm_config  # noqa
 
-if os.getenv("DYNAMIC_EPLB", "false").lower() in ("true", "1") or os.getenv(
-        "EXPERT_MAP_RECORD", "false") == "true":
-    import vllm_ascend.patch.platform.patch_multiproc_executor  # noqa
-
 if os.getenv("SHM_BARRIER",
              "true").lower() in ("true",
                                  "1") or envs.VLLM_ASCEND_BALANCE_SCHEDULING:
@@ -46,3 +41,7 @@ if os.getenv("SHM_BARRIER", "true").lower() in ("true", "1"):
 
 if envs.VLLM_ASCEND_BALANCE_SCHEDULING:
     import vllm_ascend.patch.platform.patch_balance_schedule  # noqa
+
+if os.getenv("DYNAMIC_EPLB", "false").lower() in ("true", "1") or os.getenv(
+        "EXPERT_MAP_RECORD", "false") == "true":
+    import vllm_ascend.patch.platform.patch_multiproc_executor  # noqa

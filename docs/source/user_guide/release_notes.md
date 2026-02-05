@@ -1,6 +1,6 @@
 # Release Notes
 
-## v0.13.0 - 2026.02.04
+## v0.13.0 - 2026.02.06
 
 This is the final release of v0.13.0 for vLLM Ascend. Please follow the [official doc](https://docs.vllm.ai/projects/ascend/en/v0.13.0/) to get started.
 

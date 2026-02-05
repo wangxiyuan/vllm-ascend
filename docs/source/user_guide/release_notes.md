@@ -1,6 +1,6 @@
 # Release Notes
 
-## v0.13.0 - 2026.02.05
+## v0.13.0 - 2026.02.04
 
 This is the final release of v0.13.0 for vLLM Ascend. Please follow the [official doc](https://docs.vllm.ai/projects/ascend/en/v0.13.0/) to get started.
 
@@ -103,6 +103,12 @@ Many custom ops and triton kernels were added in this release to speed up model 
 - **GLM4.6 MTP**: GLM4.6 now supports MTP with fullgraph. [#5460](https://github.com/vllm-project/vllm-ascend/pull/5460)
 - **Flashcomm2 Oshard**: Flashcomm2 now works with oshard generalized feature. [#4723](https://github.com/vllm-project/vllm-ascend/pull/4723)
 - **Fine-grained Shared Expert Overlap**: Support fine-grained shared expert overlap. [#5962](https://github.com/vllm-project/vllm-ascend/pull/5962)
+
+### Known Issue
+- Due the upgrade of `transformers` package, some models quantization weight, such as `qwen2.5vl`, `gemma3`, `minimax`, may not work. We'll fix it in the next post release. [#6302](https://github.com/vllm-project/vllm-ascend/pull/6302)
+- The performance of `Qwen3-32B` will not be good with 128K input case, it's suggested to enable pcp&dcp feature for this case. This will be improved in the next CANN release.
+- The performance of `Qwen3-235B`, `Qwen3-480B` under prefill-decode scenario and EP=32 scenario is not good as expect. We'll improve it in the next post release.
+- When deploy deepseek3.1 under prefill-decode scenario, please make sure the tp size for decode node is great than 1. `TP=1` doesn't work. This will be fixed in the next CANN release.
 
 ## v0.13.0rc2 - 2026.01.24
 

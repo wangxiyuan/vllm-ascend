@@ -7,7 +7,7 @@ This is the final release of v0.13.0 for vLLM Ascend. Please follow the [officia
 ### Highlights
 
 **Model Support**
-- **DeepSeek-R1 & DeepSeek-V3.2**: Added support for DeepSeek-R1 multimodal capabilities and improved DeepSeek-V3.2 with MTP support, performance optimizations, and async scheduling enhancements. [#3631](https://github.com/vllm-project/vllm-ascend/pull/3631) [#3900](https://github.com/vllm-project/vllm-ascend/pull/3900) [#3908](https://github.com/vllm-project/vllm-ascend/pull/3908) [#4191](https://github.com/vllm-project/vllm-ascend/pull/4191) [#4805](https://github.com/vllm-project/vllm-ascend/pull/4805)
+- **DeepSeek-R1 & DeepSeek-V3.2**: Performance optimizations, and async scheduling enhancements. [#3631](https://github.com/vllm-project/vllm-ascend/pull/3631) [#3900](https://github.com/vllm-project/vllm-ascend/pull/3900) [#3908](https://github.com/vllm-project/vllm-ascend/pull/3908) [#4191](https://github.com/vllm-project/vllm-ascend/pull/4191) [#4805](https://github.com/vllm-project/vllm-ascend/pull/4805)
 - **Qwen3-Next**: Full support for Qwen3-Next series including 80B-A3B-Instruct with full graph mode, MTP, quantization (W8A8), NZ optimization, and chunked prefill. Fixed multiple accuracy and stability issues. [#3450](https://github.com/vllm-project/vllm-ascend/pull/3450) [#3572](https://github.com/vllm-project/vllm-ascend/pull/3572) [#3428](https://github.com/vllm-project/vllm-ascend/pull/3428) [#3918](https://github.com/vllm-project/vllm-ascend/pull/3918) [#4058](https://github.com/vllm-project/vllm-ascend/pull/4058) [#4245](https://github.com/vllm-project/vllm-ascend/pull/4245) [#4070](https://github.com/vllm-project/vllm-ascend/pull/4070) [#4477](https://github.com/vllm-project/vllm-ascend/pull/4477) [#4770](https://github.com/vllm-project/vllm-ascend/pull/4770)
 - **InternVL**: Added support for InternVL models with comprehensive e2e tests and accuracy evaluation. [#3796](https://github.com/vllm-project/vllm-ascend/pull/3796) [#3964](https://github.com/vllm-project/vllm-ascend/pull/3964)
 - **LongCat-Flash**: Added support for LongCat-Flash model. [#3833](https://github.com/vllm-project/vllm-ascend/pull/3833)
@@ -44,7 +44,7 @@ This is the final release of v0.13.0 for vLLM Ascend. Please follow the [officia
   - RejectSampler, MoeInitRoutingCustom, DispatchFFNCombine custom ops
 - **Operator Fusion**: Added AddRmsnormQuant fusion pattern with SP support and inductor fusion for quantization. [#5077](https://github.com/vllm-project/vllm-ascend/pull/5077) [#4168](https://github.com/vllm-project/vllm-ascend/pull/4168)
 - **MLA/SFA**: Refactored SFA into MLA architecture for better maintainability. [#3769](https://github.com/vllm-project/vllm-ascend/pull/3769)
-- **FIA Operator**: Adapted to npu_fused_infer_attention_score with flash decoding function. To optimize performance in small batch size scenarios, this attention operator is now available. Please refer to item 22 in [FAQs](https://docs.vllm.ai/projects/ascend/en/latest/faqs.html) to enable it. [#4025](https://github.com/vllm-project/vllm-ascend/pull/4025)
+- **FIA Operator**: Adapted to npu_fused_infer_attention_score with flash decoding function. To optimize performance in small batch size scenarios, this attention operator is now available. Please refer to item 22 in [FAQs](https://docs.vllm.ai/projects/ascend/en/v0.13.0/faqs.html) to enable it. [#4025](https://github.com/vllm-project/vllm-ascend/pull/4025)
 - **CANN 8.5 Support**: Removed CP redundant variables after FIA operator enables for CANN 8.5. [#6039](https://github.com/vllm-project/vllm-ascend/pull/6039)
 
 ### Performance
@@ -68,15 +68,15 @@ Many custom ops and triton kernels were added in this release to speed up model 
 ### Dependencies
 
 - **CANN**: Upgraded to 8.5.0 [#6112](https://github.com/vllm-project/vllm-ascend/pull/6112)
-- **torch-npu**: Upgraded to 2.8.0.post1. Please note that the post version will not be installed by default. Please install it by hand from [pypi mirror](https://mirrors.huaweicloud.com/ascend/repos/pypi/torch-npu/). [#3896](https://github.com/vllm-project/vllm-ascend/pull/3896) [#4433](https://github.com/vllm-project/vllm-ascend/pull/4433)
+- **torch-npu**: Upgraded to 2.8.0.post2. It's installed in the docker container by default.
 - **triton-ascend**: Upgraded to 3.2.0 [#6105](https://github.com/vllm-project/vllm-ascend/pull/6105)
 - **vLLM**: Upgraded to 0.13.0 and dropped 0.12.0 support. [#5146](https://github.com/vllm-project/vllm-ascend/pull/5146)
-- **Transformers**: Upgraded to >= 4.57.3 [#5250](https://github.com/vllm-project/vllm-ascend/pull/5250)
+- **Transformers**: Upgraded to >= 4.57.4 [#5250](https://github.com/vllm-project/vllm-ascend/pull/5250)
 
 ### Deprecation & Breaking Changes
 
 - **CPUOffloadingConnector** is deprecated. We'll remove it in the next release. It'll be replaced by CPUOffload feature from vLLM in the future.
-- **ProfileExecuteDuration** [feature](https://docs.vllm.ai/projects/ascend/en/latest/developer_guide/performance_and_debug/profile_execute_duration.html) is deprecated.
+- **ProfileExecuteDuration** [feature](https://docs.vllm.ai/projects/ascend/en/v0.13.0/developer_guide/performance_and_debug/profile_execute_duration.html) is deprecated.
 - **Ascend Scheduler** has been dropped. [#4623](https://github.com/vllm-project/vllm-ascend/pull/4623)
 - **Torchair** has been dropped. [#4814](https://github.com/vllm-project/vllm-ascend/pull/4814)
 - **VLLM_ASCEND_ENABLE_DENSE_OPTIMIZE** is removed and `VLLM_ASCEND_ENABLE_PREFETCH_MLP` is recommended to replace as they were always enabled together. [#5272](https://github.com/vllm-project/vllm-ascend/pull/5272)

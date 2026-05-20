@@ -1,0 +1,71 @@
+name: 'Run and summarize E2E test'
+description: 'Run E2E test suite and summarize results'
+
+inputs:
+  suite:
+    description: 'Test suite name to run'
+    required: true
+  part_id:
+    description: 'Partition ID'
+    required: true
+  part_size:
+    description: 'Partition size'
+    required: true
+  continue_on_error:
+    description: 'Continue on error'
+    required: false
+    default: 'false'
+  log_file:
+    description: 'Log file path'
+    required: true
+  summary_step_name:
+    description: 'Step name for summary'
+    required: true
+  artifact_name:
+    description: 'Artifact name for timing data'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Run test
+      env:
+        VLLM_WORKER_MULTIPROC_METHOD: spawn
+        PYTORCH_NPU_ALLOC_CONF: max_split_size_mb:256
+      shell: bash
+      run: |
+        set -o pipefail
+        if [ "${{ inputs.continue_on_error }}" = "true" ]; then
+          python3 .github/workflows/scripts/run_suite.py \
+            --suite ${{ inputs.suite }} \
+            --auto-partition-id "${{ inputs.part_id }}" \
+            --auto-partition-size ${{ inputs.part_size }} \
+            --auto-upgrade-estimated-times \
+            --continue-on-error \
+            2>&1 | tee ${{ inputs.log_file }}
+        else
+          python3 .github/workflows/scripts/run_suite.py \
+            --suite ${{ inputs.suite }} \
+            --auto-partition-id "${{ inputs.part_id }}" \
+            --auto-partition-size ${{ inputs.part_size }} \
+            2>&1 | tee ${{ inputs.log_file }}
+        fi
+        exit ${PIPESTATUS[0]}
+
+    - name: Summarize test failure
+      if: ${{ always() }}
+      run: |
+        python3 .github/workflows/scripts/ci_log_summary.py \
+          --step-name "${{ inputs.summary_step_name }}" \
+          --log-file ${{ inputs.log_file }} \
+          --output "$GITHUB_STEP_SUMMARY"
+      shell: bash
+
+    - name: Upload timing data
+      uses: actions/upload-artifact@v7
+      if: ${{ inputs.continue_on_error == 'true' && github.event_name != 'pull_request' }}
+      with:
+        name: ${{ inputs.artifact_name }}
+        path: test_timing_data.json
+        if-no-files-found: warn
+        retention-days: 5

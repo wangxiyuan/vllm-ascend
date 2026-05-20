@@ -1,0 +1,98 @@
+name: 'Setup vllm-ascend 310p test environment'
+description: 'Common setup steps for vllm-ascend 310p E2E tests'
+
+inputs:
+  vllm_ref:
+    description: 'vLLM git ref to checkout'
+    required: true
+  image_hash:
+    description: 'Image identifier for cache key'
+    required: true
+  ref:
+    description: 'vllm-ascend ref to checkout (optional)'
+    required: false
+    default: ''
+  card_count:
+    description: 'Number of cards for the test'
+    required: false
+    default: '1'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout vllm-project/vllm-ascend repo
+      uses: actions/checkout@v6
+      with:
+        ref: ${{ inputs.ref }}
+
+    - name: Check npu and CANN info
+      run: |
+        npu-smi info
+        cat /usr/local/Ascend/ascend-toolkit/latest/"$(uname -i)"-linux/ascend_toolkit_install.info
+      shell: bash
+
+    - name: Config mirrors
+      run: |
+        sed -Ei 's@(ports|archive).ubuntu.com@cache-service.nginx-pypi-cache.svc.cluster.local:8081@g' /etc/apt/sources.list
+        pip config set global.index-url http://cache-service.nginx-pypi-cache.svc.cluster.local/pypi/simple
+        pip config set global.trusted-host cache-service.nginx-pypi-cache.svc.cluster.local
+        apt-get update -y
+        apt install git -y
+        git config --global --add safe.directory /__w/vllm-ascend/vllm-ascend
+      shell: bash
+
+    - name: Install system dependencies
+      run: |
+        apt-get -y install `cat packages.txt`
+        apt-get -y install gcc g++ cmake libnuma-dev
+        pip install uv
+      shell: bash
+
+    - name: Checkout vllm-project/vllm repo
+      uses: actions/checkout@v6
+      with:
+        repository: vllm-project/vllm
+        ref: ${{ inputs.vllm_ref }}
+        path: ./vllm-empty
+        fetch-depth: 1
+
+    - name: Install vllm-project/vllm from source
+      working-directory: ./vllm-empty
+      run: |
+        VLLM_TARGET_DEVICE=empty uv pip install -e .
+      shell: bash
+
+    - name: Get csrc hash
+      id: get_csrc_hash
+      run: |
+        CSRC_HASH=$(find ./csrc ./setup.py ./CMakeLists.txt ./cmake \
+          -type f -not -path '*/.*' | sort | xargs sha256sum | sha256sum | awk '{print $1}')
+        echo "CSRC_HASH=$CSRC_HASH" >> $GITHUB_OUTPUT
+      shell: bash
+
+    - name: Cache vllm-ascend csrc
+      uses: runs-on/cache@v4
+      with:
+        path: |
+          vllm_ascend/_cann_ops_custom
+          vllm_ascend/*.so
+          vllm_ascend/lib
+          vllm_ascend/include
+        key: vllm-ascend-build-v1-${{ runner.os }}-${{ inputs.image_hash }}-${{ steps.get_csrc_hash.outputs.CSRC_HASH }}
+        restore-keys: |
+          vllm-ascend-build-v1-${{ runner.os }}-${{ inputs.image_hash }}-${{ steps.get_csrc_hash.outputs.CSRC_HASH }}
+
+    - name: Install vllm-project/vllm-ascend
+      env:
+        MAX_JOBS: ${{ inputs.card_count == '1' && '23' || '' }}
+      run: |
+        pip install uc-manager
+        uv pip install -r requirements-dev.txt
+        uv pip install --force-reinstall --no-deps triton-ascend==3.2.1
+        if find vllm_ascend -maxdepth 1 -name '*.so' -type f 2>/dev/null | grep -q .; then
+          COMPILE_CUSTOM_KERNELS=0 uv pip install -e .
+        else
+          uv pip install -e .
+        fi
+        pip uninstall -y triton-ascend triton
+      shell: bash

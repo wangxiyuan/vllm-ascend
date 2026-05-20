@@ -31,9 +31,34 @@ defaults:
 
 jobs:
   e2e-test:
+    name: e2e-full
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: linux-aarch64-a2b3-1
+            image: swr.cn-southwest-2.myhuaweicloud.com/base_image/ascend-ci/cann:9.0.0-910b-ubuntu22.04-py3.11
+            card: "1"
+            suite: e2e-singlecard
+            parts: '[0, 1]'
+          - runner: linux-aarch64-a3-2
+            image: swr.cn-southwest-2.myhuaweicloud.com/base_image/ascend-ci/cann:9.0.0-a3-ubuntu22.04-py3.11
+            card: "2"
+            suite: e2e-multicard-2-cards
+            parts: '[0]'
+            run_non_triton: true
+          - runner: linux-aarch64-a3-4
+            image: swr.cn-southwest-2.myhuaweicloud.com/base_image/ascend-ci/cann:9.0.0-a3-ubuntu22.04-py3.11
+            card: "4"
+            suite: e2e-multicard-4-cards
+            parts: '[0]'
     uses: ./.github/workflows/_e2e_test.yaml
     with:
       vllm: main
-      image: swr.cn-southwest-2.myhuaweicloud.com/base_image/ascend-ci/cann:9.0.0-910b-ubuntu22.04-py3.11
-      contains_310: false
-      type: full
+      runner: ${{ matrix.runner }}
+      image: ${{ matrix.image }}
+      card_count: ${{ matrix.card }}
+      suite: ${{ matrix.suite }}
+      parts: ${{ matrix.parts }}
+      run_non_triton: ${{ matrix.run_non_triton || false }}
+      continue_on_error: false

@@ -1,0 +1,337 @@
+#
+# Copyright (c) 2025 Huawei Technologies Co., Ltd. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# This file is a part of the vllm-ascend project.
+#
+
+name: E2E-Test
+
+on:
+  pull_request:
+    branches:
+      - 'main'
+      - 'releases/v*'
+    types: [opened, synchronize, reopened, labeled]
+
+# Bash shells do not use ~/.profile or ~/.bashrc so these shells need to be explicitly
+# declared as "shell: bash -el {0}" on steps that need to be properly activated.
+defaults:
+  run:
+    shell: bash -el {0}
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+# only cancel in-progress runs of the same workflow
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    uses: ./.github/workflows/_pre_commit.yml
+    with:
+      vllm: 0d4d334eaa583b9c09aa4eb7538c22db99fd84b3
+
+  changes:
+    needs: [lint]
+    runs-on: linux-aarch64-a2b3-0
+    container:
+      image: swr.cn-southwest-2.myhuaweicloud.com/base_image/ascend-ci/vllm-ascend:nightly-cpu
+    outputs:
+      e2e_tracker: ${{ steps.filter.outputs.e2e_tracker }}
+      _310_tracker: ${{ steps.filter.outputs._310_tracker }}
+      ut_tracker: ${{ steps.filter.outputs.ut_tracker }}
+      has_tests: ${{ steps.scope.outputs.has_tests }}
+      test_groups: ${{ steps.scope.outputs.test_groups }}
+      matched_modules: ${{ steps.scope.outputs.matched_modules }}
+    steps:
+      - name: Setup git proxy
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          git config --global url."https://gh-proxy.test.osinfra.cn/https://github.com/".insteadOf https://github.com/
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: dorny/paths-filter@v4
+        id: filter
+        with:
+          filters: |
+            e2e_tracker:
+              - '.github/actions/**'
+              - '.github/workflows/pr_test.yaml'
+              - '.github/workflows/_e2e_test.yaml'
+              - '.github/workflows/scripts/**'
+              - '.github/workflows/_optional_smart_e2e.yaml'
+              - 'vllm_ascend/**'
+              - 'csrc/**'
+              - 'cmake/**'
+              - 'tests/e2e/**'
+              - 'CMakeLists.txt'
+              - 'setup.py'
+              - 'requirements.txt'
+              - 'requirements-dev.txt'
+              - 'requirements-lint.txt'
+              - 'packages.txt'
+            ut_tracker:
+              - 'tests/ut/**'
+            _310_tracker:
+              - '.github/workflows/pr_test.yaml'
+              - '.github/workflows/_e2e_test.yaml'
+              - 'vllm_ascend/_310p/**'
+              - 'csrc/**'
+              - 'tests/e2e/310p/**'
+              - 'vllm_ascend/worker/**'
+              - 'vllm_ascend/attention/attention_v1.py'
+              - 'vllm_ascend/ops/fused_moe/**'
+              - 'vllm_ascend/patch/**'
+              - 'CMakeLists.txt'
+
+      - name: Determine UT test scope
+        if: ${{ steps.filter.outputs.ut_tracker == 'true' || steps.filter.outputs.e2e_tracker == 'true' }}
+        id: scope
+        run: |
+          git config --global --add safe.directory /__w/vllm-ascend/vllm-ascend
+          git fetch origin ${{ github.base_ref }}
+          pip install pyyaml
+          python3 .github/workflows/scripts/determine_smart_e2e_scope.py \
+            --diff-base origin/${{ github.base_ref }} \
+            --run-all-cpu
+
+      - name: Post scope summary
+        if: ${{ steps.scope.outputs.has_tests == 'true' }}
+        env:
+          TEST_GROUPS: ${{ steps.scope.outputs.test_groups }}
+          MATCHED_MODULES: ${{ steps.scope.outputs.matched_modules }}
+        run: python3 .github/workflows/scripts/post_scope_summary.py
+
+  smart_e2e:
+    needs: [changes]
+    name: smart test
+    if: ${{ needs.changes.outputs.has_tests == 'true' }}
+    strategy:
+      matrix:
+        vllm_version: [0d4d334eaa583b9c09aa4eb7538c22db99fd84b3, v0.20.2]
+    uses: ./.github/workflows/_optional_smart_e2e.yaml
+    with:
+      vllm: ${{ matrix.vllm_version }}
+      test_groups: ${{ needs.changes.outputs.test_groups }}
+
+  # ==================== Light Tests (No 'ready' label) ====================
+  e2e-light:
+    name: e2e-light
+    needs: [changes]
+    if: ${{ github.event_name == 'pull_request' && needs.changes.outputs.e2e_tracker == 'true' && !contains(github.event.pull_request.labels.*.name, 'ready') }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - vllm_version: 0d4d334eaa583b9c09aa4eb7538c22db99fd84b3
+            runner: linux-aarch64-a2b3-1
+            image: swr.cn-southwest-2.myhuaweicloud.com/base_image/ascend-ci/cann:9.0.0-910b-ubuntu22.04-py3.11
+            card: "1"
+            suite: e2e-1card-light
+            parts: '[0]'
+          - vllm_version: v0.20.2
+            runner: linux-aarch64-a2b3-1
+            image: swr.cn-southwest-2.myhuaweicloud.com/base_image/ascend-ci/cann:9.0.0-910b-ubuntu22.04-py3.11
+            card: "1"
+            suite: e2e-1card-light
+            parts: '[0]'
+          - vllm_version: 0d4d334eaa583b9c09aa4eb7538c22db99fd84b3
+            runner: linux-aarch64-a3-2
+            image: swr.cn-southwest-2.myhuaweicloud.com/base_image/ascend-ci/cann:9.0.0-a3-ubuntu22.04-py3.11
+            card: "2"
+            suite: e2e-2card-light
+            parts: '[0]'
+          - vllm_version: v0.20.2
+            runner: linux-aarch64-a3-2
+            image: swr.cn-southwest-2.myhuaweicloud.com/base_image/ascend-ci/cann:9.0.0-a3-ubuntu22.04-py3.11
+            card: "2"
+            suite: e2e-2card-light
+            parts: '[0]'
+          - vllm_version: 0d4d334eaa583b9c09aa4eb7538c22db99fd84b3
+            runner: linux-aarch64-a3-4
+            image: swr.cn-southwest-2.myhuaweicloud.com/base_image/ascend-ci/cann:9.0.0-a3-ubuntu22.04-py3.11
+            card: "4"
+            suite: e2e-4card-light
+            parts: '[0]'
+            run_mooncake: true
+          - vllm_version: v0.20.2
+            runner: linux-aarch64-a3-4
+            image: swr.cn-southwest-2.myhuaweicloud.com/base_image/ascend-ci/cann:9.0.0-a3-ubuntu22.04-py3.11
+            card: "4"
+            suite: e2e-4card-light
+            parts: '[0]'
+            run_mooncake: true
+    uses: ./.github/workflows/_e2e_test.yaml
+    with:
+      vllm: ${{ matrix.vllm_version }}
+      runner: ${{ matrix.runner }}
+      image: ${{ matrix.image }}
+      card_count: ${{ matrix.card }}
+      suite: ${{ matrix.suite }}
+      parts: ${{ matrix.parts }}
+      run_mooncake: ${{ matrix.run_mooncake || false }}
+      continue_on_error: false
+
+  e2e-light-310p:
+    name: e2e-light-310p
+    needs: [changes]
+    if: ${{ github.event_name == 'pull_request' && needs.changes.outputs._310_tracker == 'true' && !contains(github.event.pull_request.labels.*.name, 'ready') }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - vllm_version: 0d4d334eaa583b9c09aa4eb7538c22db99fd84b3
+            runner: linux-aarch64-310p-1
+            image: swr.cn-southwest-2.myhuaweicloud.com/base_image/ascend-ci/cann:9.0.0-310p-ubuntu22.04-py3.11
+            card: "310p-1"
+            suite: e2e-310p-singlecard
+            parts: '[0]'
+          - vllm_version: v0.20.2
+            runner: linux-aarch64-310p-1
+            image: swr.cn-southwest-2.myhuaweicloud.com/base_image/ascend-ci/cann:9.0.0-310p-ubuntu22.04-py3.11
+            card: "310p-1"
+            suite: e2e-310p-singlecard
+            parts: '[0]'
+          - vllm_version: 0d4d334eaa583b9c09aa4eb7538c22db99fd84b3
+            runner: linux-aarch64-310p-4
+            image: swr.cn-southwest-2.myhuaweicloud.com/base_image/ascend-ci/cann:9.0.0-310p-ubuntu22.04-py3.11
+            card: "310p-4"
+            suite: e2e-310p-4cards
+            parts: '[0]'
+          - vllm_version: v0.20.2
+            runner: linux-aarch64-310p-4
+            image: swr.cn-southwest-2.myhuaweicloud.com/base_image/ascend-ci/cann:9.0.0-310p-ubuntu22.04-py3.11
+            card: "310p-4"
+            suite: e2e-310p-4cards
+            parts: '[0]'
+    uses: ./.github/workflows/_e2e_test.yaml
+    with:
+      vllm: ${{ matrix.vllm_version }}
+      runner: ${{ matrix.runner }}
+      image: ${{ matrix.image }}
+      card_count: ${{ matrix.card }}
+      suite: ${{ matrix.suite }}
+      parts: ${{ matrix.parts }}
+      is_310p: true
+      continue_on_error: false
+
+  # ==================== Full Tests (Has 'ready' & 'ready-for-test' labels) ====================
+  e2e-full:
+    name: e2e-full
+    needs: [changes]
+    if: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'ready') && contains(github.event.pull_request.labels.*.name, 'ready-for-test') && (needs.changes.outputs.e2e_tracker == 'true' || needs.changes.outputs.e2e_tracker == true) }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - vllm_version: 0d4d334eaa583b9c09aa4eb7538c22db99fd84b3
+            runner: linux-aarch64-a2b3-1
+            image: swr.cn-southwest-2.myhuaweicloud.com/base_image/ascend-ci/cann:9.0.0-910b-ubuntu22.04-py3.11
+            card: "1"
+            suite: e2e-singlecard
+            parts: '[0, 1]'
+          - vllm_version: v0.20.2
+            runner: linux-aarch64-a2b3-1
+            image: swr.cn-southwest-2.myhuaweicloud.com/base_image/ascend-ci/cann:9.0.0-910b-ubuntu22.04-py3.11
+            card: "1"
+            suite: e2e-singlecard
+            parts: '[0, 1]'
+          - vllm_version: 0d4d334eaa583b9c09aa4eb7538c22db99fd84b3
+            runner: linux-aarch64-a3-2
+            image: swr.cn-southwest-2.myhuaweicloud.com/base_image/ascend-ci/cann:9.0.0-a3-ubuntu22.04-py3.11
+            card: "2"
+            suite: e2e-multicard-2-cards
+            parts: '[0]'
+            run_non_triton: true
+          - vllm_version: v0.20.2
+            runner: linux-aarch64-a3-2
+            image: swr.cn-southwest-2.myhuaweicloud.com/base_image/ascend-ci/cann:9.0.0-a3-ubuntu22.04-py3.11
+            card: "2"
+            suite: e2e-multicard-2-cards
+            parts: '[0]'
+            run_non_triton: true
+          - vllm_version: 0d4d334eaa583b9c09aa4eb7538c22db99fd84b3
+            runner: linux-aarch64-a3-4
+            image: swr.cn-southwest-2.myhuaweicloud.com/base_image/ascend-ci/cann:9.0.0-a3-ubuntu22.04-py3.11
+            card: "4"
+            suite: e2e-multicard-4-cards
+            parts: '[0]'
+          - vllm_version: v0.20.2
+            runner: linux-aarch64-a3-4
+            image: swr.cn-southwest-2.myhuaweicloud.com/base_image/ascend-ci/cann:9.0.0-a3-ubuntu22.04-py3.11
+            card: "4"
+            suite: e2e-multicard-4-cards
+            parts: '[0]'
+    uses: ./.github/workflows/_e2e_test.yaml
+    with:
+      vllm: ${{ matrix.vllm_version }}
+      runner: ${{ matrix.runner }}
+      image: ${{ matrix.image }}
+      card_count: ${{ matrix.card }}
+      suite: ${{ matrix.suite }}
+      parts: ${{ matrix.parts }}
+      run_non_triton: ${{ matrix.run_non_triton || false }}
+      continue_on_error: false
+
+  # ==================== Comment-Triggered Tests (Has 'ready' label) ====================
+  parse-trigger:
+    name: Parse /e2e comment
+    if: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'ready') }}
+    uses: ./.github/workflows/_parse_trigger.yaml
+    with:
+      parse_e2e_comment: true
+
+  e2e-comment-test:
+    name: e2e-comment (${{ matrix.vllm_version }})
+    needs: [parse-trigger]
+    if: ${{ needs.parse-trigger.outputs.allowed == 'true' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        vllm_version: [v0.20.2]
+        include:
+          - runner: linux-aarch64-a2b3-1
+            image: swr.cn-southwest-2.myhuaweicloud.com/base_image/ascend-ci/cann:9.0.0-910b-ubuntu22.04-py3.11
+            card: "1"
+            tests: ${{ needs.parse-trigger.outputs.singlecard_tests }}
+          - runner: linux-aarch64-a3-2
+            image: swr.cn-southwest-2.myhuaweicloud.com/base_image/ascend-ci/cann:9.0.0-a3-ubuntu22.04-py3.11
+            card: "2"
+            tests: ${{ needs.parse-trigger.outputs.multicard_2_tests }}
+          - runner: linux-aarch64-a3-4
+            image: swr.cn-southwest-2.myhuaweicloud.com/base_image/ascend-ci/cann:9.0.0-a3-ubuntu22.04-py3.11
+            card: "4"
+            tests: ${{ needs.parse-trigger.outputs.multicard_4_tests }}
+          - runner: linux-aarch64-310p-1
+            image: swr.cn-southwest-2.myhuaweicloud.com/base_image/ascend-ci/cann:9.0.0-310p-ubuntu22.04-py3.11
+            card: "310p-1"
+            tests: ${{ needs.parse-trigger.outputs.p310_tests }}
+            is_310p: true
+    uses: ./.github/workflows/_e2e_test.yaml
+    with:
+      vllm: ${{ matrix.vllm_version }}
+      runner: ${{ matrix.runner }}
+      image: ${{ matrix.image }}
+      card_count: ${{ matrix.card }}
+      suite: ''
+      parts: '[0]'
+      custom_tests: ${{ matrix.tests }}
+      ref: ${{ needs.parse-trigger.outputs.pr_sha }}
+      is_310p: ${{ matrix.is_310p || false }}
+      continue_on_error: false

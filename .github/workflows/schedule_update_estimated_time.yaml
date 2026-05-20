@@ -22,16 +22,57 @@ jobs:
   e2e-test:
     name: e2e-test
     strategy:
+      fail-fast: false
       matrix:
         vllm_version: [v0.20.2]
-        type: [full, light]
+        include:
+          # Light tests
+          - runner: linux-aarch64-a2b3-1
+            image: swr.cn-southwest-2.myhuaweicloud.com/base_image/ascend-ci/vllm-ascend:main
+            card: "1"
+            suite: e2e-singlecard-light
+            parts: '[0]'
+            test_type: light
+          - runner: linux-aarch64-a3-2
+            image: swr.cn-southwest-2.myhuaweicloud.com/base_image/ascend-ci/vllm-ascend:main
+            card: "2"
+            suite: e2e-2card-light
+            parts: '[0]'
+            test_type: light
+          - runner: linux-aarch64-a3-4
+            image: swr.cn-southwest-2.myhuaweicloud.com/base_image/ascend-ci/vllm-ascend:main
+            card: "4"
+            suite: e2e-4card-light
+            parts: '[0]'
+            test_type: light
+          # Full tests
+          - runner: linux-aarch64-a2b3-1
+            image: swr.cn-southwest-2.myhuaweicloud.com/base_image/ascend-ci/vllm-ascend:main
+            card: "1"
+            suite: e2e-singlecard
+            parts: '[0, 1]'
+            test_type: full
+          - runner: linux-aarch64-a3-2
+            image: swr.cn-southwest-2.myhuaweicloud.com/base_image/ascend-ci/vllm-ascend:main
+            card: "2"
+            suite: e2e-multicard-2-cards
+            parts: '[0]'
+            test_type: full
+          - runner: linux-aarch64-a3-4
+            image: swr.cn-southwest-2.myhuaweicloud.com/base_image/ascend-ci/vllm-ascend:main
+            card: "4"
+            suite: e2e-multicard-4-cards
+            parts: '[0]'
+            test_type: full
     uses: ./.github/workflows/_e2e_test.yaml
     with:
       vllm: ${{ matrix.vllm_version }}
-      image: swr.cn-southwest-2.myhuaweicloud.com/base_image/ascend-ci/vllm-ascend:main
-      contains_310: false
-      type: ${{ matrix.type }}
-      continue_on_error: true  # Continue even if some tests fail, we want to collect as much timing data as possible
+      runner: ${{ matrix.runner }}
+      image: ${{ matrix.image }}
+      card_count: ${{ matrix.card }}
+      suite: ${{ matrix.suite }}
+      parts: ${{ matrix.parts }}
+      continue_on_error: true
 
   update-estimated-times:
     name: Update estimated_time in config.yaml

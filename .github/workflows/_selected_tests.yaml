@@ -98,7 +98,7 @@ jobs:
       - name: Install vllm-project/vllm from source
         working-directory: ./vllm-empty
         run: |
-          VLLM_TARGET_DEVICE=empty uv pip install . ${{ steps.check_npu.outputs.has_npu == 'false' && '--extra-index-url https://download.pytorch.org/whl/cpu' || '' }}
+          VLLM_TARGET_DEVICE=empty uv pip install .
           pip uninstall -y triton
 
       - name: Checkout vllm-project/vllm-ascend repo
@@ -109,6 +109,8 @@ jobs:
 
       - name: Rebase on latest main
         run: |
+          git config user.name "vllm-ascend-ci"
+          git config user.email "vllm-ascend-ci@users.noreply.github.com"
           git fetch origin main
           git rebase origin/main
 
@@ -172,10 +174,9 @@ jobs:
           SOC_VERSION: ascend910b1
           COMPILE_CUSTOM_KERNELS: 0
         run: |
-          pip install uc-manager
           export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/Ascend/ascend-toolkit/latest/x86_64-linux/devlib
-          pip install . --extra-index-url https://download.pytorch.org/whl/cpu --extra-index-url https://repo.huaweicloud.com/ascend/repos/pypi
-          pip install -r requirements-dev.txt --extra-index-url https://download.pytorch.org/whl/cpu --extra-index-url https://repo.huaweicloud.com/ascend/repos/pypi
+          uv pip install -r requirements-dev.txt
+          uv pip install -e .
 
       - name: Uninstall Triton for 310P tests
         if: ${{ steps.check_npu.outputs.has_npu == 'true' && matrix.group.npu_type == '310p' }}

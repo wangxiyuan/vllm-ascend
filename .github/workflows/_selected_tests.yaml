@@ -32,6 +32,11 @@ on:
         required: false
         default: ''
         description: 'The vllm-ascend ref to test.'
+      e2e_coverage:
+        type: boolean
+        required: false
+        default: false
+        description: 'Temporarily collect Phase 2 E2E coverage artifacts.'
 
 # Bash shells do not use ~/.profile or ~/.bashrc so these shells need to be explicitly
 # declared as "shell: bash -el {0}" on steps that need to be properly activated.
@@ -213,13 +218,18 @@ jobs:
           uv pip install -r requirements-dev.txt
           uv pip install -e .
 
+      - name: Install coverage for Phase 2 collection
+        if: ${{ inputs.e2e_coverage }}
+        run: |
+          uv pip install coverage
+
       - name: Uninstall Triton for 310P tests
         if: ${{ matrix.group.npu_type != 'cpu' && matrix.group.npu_type == '310p' }}
         run: |
           pip uninstall -y triton-ascend triton
 
       - name: Run selected tests with device
-        if: ${{ matrix.group.npu_type != 'cpu' }}
+        if: ${{ matrix.group.npu_type != 'cpu' && inputs.e2e_coverage != true }}
         env:
           VLLM_WORKER_MULTIPROC_METHOD: spawn
         run: |
@@ -229,6 +239,17 @@ jobs:
             "${{ matrix.group.num_npus }}" \
             "with-device" \
             ${{ matrix.group.tests }}
+
+      - name: Run selected tests with Phase 2 coverage
+        if: ${{ matrix.group.npu_type != 'cpu' && inputs.e2e_coverage }}
+        env:
+          VLLM_WORKER_MULTIPROC_METHOD: spawn
+        run: |
+          . /usr/local/Ascend/ascend-toolkit/set_env.sh
+          python tests/e2e/tools/collect_e2e_coverage.py \
+            --allow-test-failures \
+            --output "tests/e2e/reports/e2e_coverage_map-${{ inputs.vllm }}-${{ matrix.group.npu_type }}-${{ matrix.group.num_npus }}card.json" \
+            --tests ${{ matrix.group.tests }}
 
       - name: Run selected tests without device
         if: ${{ matrix.group.npu_type == 'cpu' }}
@@ -249,6 +270,17 @@ jobs:
         with:
           name: selected-test-logs-vllm-${{ inputs.vllm }}-${{ matrix.group.npu_type }}-${{ matrix.group.num_npus }}card
           path: ${{ runner.temp }}/selected-tests-*
+          if-no-files-found: ignore
+          retention-days: 14
+          compression-level: 0
+
+      - name: Upload Phase 2 coverage map
+        if: always() && inputs.e2e_coverage
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: phase2-e2e-coverage-vllm-${{ inputs.vllm }}-${{ matrix.group.npu_type }}-${{ matrix.group.num_npus }}card
+          path: tests/e2e/reports/e2e_coverage_map-*.json
           if-no-files-found: ignore
           retention-days: 14
           compression-level: 0

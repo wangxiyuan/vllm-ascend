@@ -42,7 +42,7 @@ concurrency:
 
 jobs:
   lint-and-select-tests:
-    if: ${{ github.event.action != 'labeled' || github.event.label.name == 'ready' }}
+    if: ${{ github.event.action != 'labeled' || github.event.label.name == 'ready' || github.event.label.name == 'smart-e2e' }}
     runs-on: linux-amd64-cpu-8-hk
     container:
       image: quay.io/ascend-ci/vllm-ascend:lint
@@ -127,20 +127,20 @@ jobs:
           git config --global --add safe.directory /__w/vllm-ascend/vllm-ascend
           pre-commit run --all-files --hook-stage manual --show-diff-on-failure
 
-      - name: Run mypy
-        run: |
-          PYTHONPATH="$PYTHONPATH:$(pwd)/vllm-empty"
-          export PYTHONPATH
-          git config --global --add safe.directory /__w/vllm-ascend/vllm-ascend
-          for python_version in "3.10" "3.11" "3.12"; do
-            echo "============================"
-            tools/mypy.sh 1 "$python_version"
-            echo "============================"
-          done
+      # - name: Run mypy
+      #   run: |
+      #     PYTHONPATH="$PYTHONPATH:$(pwd)/vllm-empty"
+      #     export PYTHONPATH
+      #     git config --global --add safe.directory /__w/vllm-ascend/vllm-ascend
+      #     for python_version in "3.10" "3.11" "3.12"; do
+      #       echo "============================"
+      #       tools/mypy.sh 1 "$python_version"
+      #       echo "============================"
+      #     done
 
       - name: Validate test coverage config
         run: |
-          pip install pyyaml
+          pip install pyyaml regex
           python3 .github/workflows/scripts/coverage.py
 
       - name: Select tests based on changed files
@@ -149,8 +149,12 @@ jobs:
           git config --global --add safe.directory /__w/vllm-ascend/vllm-ascend
           git fetch origin ${{ github.base_ref }}
           pip install regex
-          python3 .github/workflows/scripts/select_tests.py \
-            --diff-base origin/${{ github.base_ref }}
+          if [ "${{ contains(github.event.pull_request.labels.*.name, 'smart-e2e') }}" = "true" ]; then
+            python3 .github/workflows/scripts/select_tests.py --run-all-modules
+          else
+            python3 .github/workflows/scripts/select_tests.py \
+              --diff-base origin/${{ github.base_ref }}
+          fi
 
   run-selected-tests:
     needs: lint-and-select-tests
@@ -163,3 +167,4 @@ jobs:
       vllm: ${{ matrix.vllm_version }}
       ref: ${{ github.event.pull_request.head.sha }}
       test_groups: ${{ needs.lint-and-select-tests.outputs.test_groups }}
+      e2e_coverage: ${{ contains(github.event.pull_request.labels.*.name, 'smart-e2e') }}

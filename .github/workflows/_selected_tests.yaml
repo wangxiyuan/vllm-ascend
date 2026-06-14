@@ -193,7 +193,7 @@ jobs:
             COMPILE_CUSTOM_KERNELS=0 uv pip install -e .
           else
             echo "CSRC cache miss: no .so files found, compile kernels"
-            uv pip install -e . --no-build-isolation
+            uv pip install -e .
           fi
 
       - name: Install vllm-project/vllm-ascend no device

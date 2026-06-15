@@ -43,8 +43,19 @@ env:
   UV_SYSTEM_PYTHON: 1
 
 jobs:
+    resolve-tag:
+        runs-on: ubuntu-latest
+        outputs:
+            release_tag: ${{ steps.vllm.outputs.release_tag }}
+        steps:
+          - uses: actions/checkout@v6
+          - name: Read vLLM release tag
+            id: vllm
+            uses: ./.github/actions/read-vllm-release-tag
+
     e2e-upstream_singlecard:
         runs-on: linux-aarch64-a2b3-1
+        needs: resolve-tag
         strategy:
           fail-fast: false
           matrix:
@@ -57,9 +68,6 @@ jobs:
         steps:
           - name: Checkout vllm-project/vllm-ascend repo
             uses: actions/checkout@v6
-          - name: Read vLLM release tag
-            id: vllm
-            uses: ./.github/actions/read-vllm-release-tag
           - name: Check npu and CANN info
             run: |
               npu-smi info
@@ -86,7 +94,7 @@ jobs:
             uses: actions/checkout@v6
             with:
               repository: vllm-project/vllm
-              ref: ${{ steps.vllm.outputs.release_tag }}
+              ref: ${{ needs.resolve-tag.outputs.release_tag }}
               path: ./vllm-empty
               fetch-depth: 1
 
@@ -130,6 +138,7 @@ jobs:
               
     e2e-upstream_a2_2:
         runs-on: linux-aarch64-a2b3-2
+        needs: resolve-tag
         strategy:
           fail-fast: false
           matrix:
@@ -142,9 +151,6 @@ jobs:
         steps:
           - name: Checkout vllm-project/vllm-ascend repo
             uses: actions/checkout@v6
-          - name: Read vLLM release tag
-            id: vllm
-            uses: ./.github/actions/read-vllm-release-tag
           - name: Check npu and CANN info
             run: |
               npu-smi info
@@ -171,7 +177,7 @@ jobs:
             uses: actions/checkout@v6
             with:
               repository: vllm-project/vllm
-              ref: ${{ steps.vllm.outputs.release_tag }}
+              ref: ${{ needs.resolve-tag.outputs.release_tag }}
               path: ./vllm-empty
               fetch-depth: 1
 
@@ -206,6 +212,7 @@ jobs:
 
     e2e-upstream_a2_4:
         runs-on: linux-aarch64-a2b3-4
+        needs: resolve-tag
         strategy:
           fail-fast: false
           matrix:
@@ -218,9 +225,6 @@ jobs:
         steps:
           - name: Checkout vllm-project/vllm-ascend repo
             uses: actions/checkout@v6
-          - name: Read vLLM release tag
-            id: vllm
-            uses: ./.github/actions/read-vllm-release-tag
           - name: Check npu and CANN info
             run: |
               npu-smi info
@@ -247,7 +251,7 @@ jobs:
             uses: actions/checkout@v6
             with:
               repository: vllm-project/vllm
-              ref: ${{ steps.vllm.outputs.release_tag }}
+              ref: ${{ needs.resolve-tag.outputs.release_tag }}
               path: ./vllm-empty
               fetch-depth: 1
 

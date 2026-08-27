@@ -229,6 +229,142 @@ class AscendConfig:
     Ascend-configuration container, free of the heavy upstream VllmConfig
     graph (and drops ``arbitrary_types_allowed``, which existed only for the
     former ``vllm_config`` field).
+
+    Example: pass this dict via ``--additional-config '<json>'``. All keys
+    are optional; the values below show every supported key with its default
+    value (see the mutex/validation notes below before copying).
+
+        {
+            "refresh": false,
+            "enable_cpu_binding": true,
+            "multistream_dsv4_dsa_overlap": true,
+            "enable_prefill_mc2": false,
+            "multistream_overlap_shared_expert": false,
+            "enable_kv_nz": false,
+            "enable_mc2_hierarchy_comm": false,
+            "enable_reduce_sample": false,
+            "enable_dsa_cp": false,
+            "draft_window_size": null,
+            "mix_placement": false,
+            "pa_shape_list": [],
+            "mega_moe_max_tokens": 131072,
+            "ascend_log_path": "~/ascend/log/vllm_ascend",
+            "c8_enable_reshape_optim": false,
+            "enable_fused_mc2": 0,
+            "enable_mlapo": true,
+            "mlapo_keep_prefill_weights": false,
+            "msmonitor_use_daemon": false,
+            "enable_transpose_kv_cache_by_block": true,
+            "weight_nz_mode": 1,
+            "enable_shared_expert_dp": false,
+            "enable_sparse_sfa_c8": false,
+            "enable_sparse_li_c8": false,
+            "ascend_compilation_config": {
+                "enable_npugraph_ex": true,
+                "enable_static_kernel": false,
+                "fuse_norm_quant": true,
+                "fuse_qknorm_rope": true,
+                "fuse_muls_add": true
+            },
+            "ascend_fusion_config": {
+                "fusion_ops_gmmswigluquant": true
+            },
+            "eplb_config": {
+                "dynamic_eplb": false,
+                "expert_map_path": null,
+                "expert_heat_collection_interval": 600,
+                "algorithm_execution_interval": 50,
+                "expert_map_record_path": null,
+                "num_redundant_experts": 0,
+                "eplb_policy_type": 2,
+                "eplb_heat_collection_stage": "all",
+                "load_collection_phase": "all"
+            },
+            "rejection_sampler_config": {
+                "enable_block_verify": false,
+                "enable_entropy_verify": false,
+                "posterior_threshold": 0.95,
+                "posterior_alpha": 0.4
+            },
+            "rl_config": {
+                "enabled": false,
+                "sleep_mode_extra_cleanup": false,
+                "enable_training_consistency": false,
+                "enable_batch_invariant": false
+            },
+            "xlite_graph_config": {
+                "enabled": false,
+                "full_mode": false
+            },
+            "finegrained_tp_config": {
+                "oproj_tensor_parallel_size": 0,
+                "lmhead_tensor_parallel_size": 0,
+                "embedding_tensor_parallel_size": 0,
+                "mlp_tensor_parallel_size": 0,
+                "olora_tensor_parallel_size": 0
+            },
+            "scheduler_config": {
+                "enable_balance_scheduling": false,
+                "recompute_scheduler_enable": false,
+                "short_request_first_config": {
+                    "enabled": false,
+                    "threshold": 256,
+                    "long_max_wait_ms": 0.0
+                },
+                "profiling_chunk_config": {
+                    "enabled": false,
+                    "smooth_factor": 1.0,
+                    "min_chunk": 4096,
+                    "need_timing": null,
+                    "max_fit_chunk": 30
+                },
+                "batch_job_sched_config": {
+                    "enabled": false,
+                    "max_jobs": 20,
+                    "reserve_margin_blocks": 2,
+                    "reserve_max_blocks": 8,
+                    "low_available_tokens_threshold": 4096,
+                    "short_decode_token_threshold": 32
+                },
+                "dyntra_lb_config": {
+                    "enabled": false,
+                    "enable_diagnostics": false,
+                    "mode": "dynamic",
+                    "start_step": 250,
+                    "end_step": -1,
+                    "bubble_threshold": 5.0,
+                    "long_req_block_threshold": 700,
+                    "dynamic_max_step": 256
+                }
+            },
+            "dynamic_spec_config": {
+                "method": null,
+                "method_params": {}
+            },
+            "sparse_kv_offload_config": {
+                "enabled": false,
+                "topk_buffer_size": 4096,
+                "dram_size_per_dp_GB": 128,
+                "keep_device_kv_cache": false
+            }
+        }
+
+    Additional notes:
+
+    - Unknown keys are rejected (``extra="forbid"``); a typo fails fast.
+    - ``dump_config_path`` (str path) / ``dump_config`` (inline dict, mutually
+      exclusive with ``dump_config_path``; materialized by the factory to
+      ``.vllm_ascend/msprobe/msprobe_dump_config.json``) are msprobe dump
+      options consumed by the factory before schema validation.
+    - ``refresh`` forces reconstruction of the cached singleton config.
+    - Pure-derived fields computed automatically and not user-settable:
+      ``enable_sp_by_pass``, ``pd_tp_ratio``, ``pd_head_ratio``,
+      ``num_head_replica``.
+    - Deprecated top-level scheduler keys (``enable_balance_scheduling``,
+      ``recompute_scheduler_enable``, ``short_request_first_config``,
+      ``profiling_chunk_config``, ``batch_job_sched_config``) still resolve,
+      but emit deprecation warnings; prefer nesting under
+      ``scheduler_config`` as shown above.
     """
 
     model_config = ConfigDict(extra="forbid")

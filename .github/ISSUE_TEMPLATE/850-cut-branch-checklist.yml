@@ -53,7 +53,7 @@ body:
       CI/CD configuration changes on the release branch.
     label: Release Branch CI Updates (on release branch)
     value: >
-      - [ ] pr_test.yaml: Remove main_commit from run-selected-tests and run-selected-tests-upstream job matrices (keep release_tag only)
+      - [ ] pr_test.yaml: Remove main_commit from the run-selected-tests job matrix (keep release_tag only)
 
       - [ ] pr_e2e_command.yml: Remove main_commit from trigger-selected-tests job matrix (keep release_tag only)
 

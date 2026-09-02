@@ -21,8 +21,19 @@ FAILED_SENTINEL = "FAILED"
 EXPECTED_SENTINEL = "EXPECTED"
 
 
+VLLM_REPO_TARGET_PREFIX = "vllm://"
+
+
 def coverage_key(target: str) -> str:
-    """Return the output directory name used by run_selected_tests.sh."""
+    """Return the output directory name used by run_selected_tests.sh.
+
+    vLLM-checkout targets (``vllm://`` prefix, see select_tests.py) run in
+    the pinned ./vllm-empty checkout, where run_selected_tests.sh derives
+    the coverage directory from the stripped path. Strip the prefix here so
+    both sides compute the same key.
+    """
+    if target.startswith(VLLM_REPO_TARGET_PREFIX):
+        target = target[len(VLLM_REPO_TARGET_PREFIX) :]
     basename = target[:-3] if target.endswith(".py") else target
     return basename.replace("\\", "/").replace("/", "__").replace("::", "--")
 

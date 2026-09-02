@@ -49,10 +49,36 @@ failed_logs=()
 timing_entries=()
 test_index=0
 overall_status=0
+vllm_upstream_ready=0
 pytest_log_dir="${RUNNER_TEMP:-/tmp}/selected-tests-${npu_type}-${num_npus}card"
 project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 
 mkdir -p "${pytest_log_dir}"
+
+# One-time preparation for vllm:// targets (vLLM upstream tests running
+# inside the pinned ./vllm-empty checkout): install missing deps, patch the
+# vLLM conftest so the vllm-ascend platform patches are imported before any
+# test, and set the NPU-related env the upstream suite expects.
+setup_vllm_upstream() {
+  if [ "${vllm_upstream_ready}" = "1" ]; then
+    return
+  fi
+  local vllm_dir="${project_root}/vllm-empty"
+  if [ ! -d "${vllm_dir}" ]; then
+    echo "::error::${vllm_dir} checkout not found; required for vllm:// targets"
+    exit 1
+  fi
+  pip install tblib -q
+  apt-get -y install clang-15 >/dev/null 2>&1 || echo "Warning: clang-15 install failed; continuing without it"
+  if ! grep -q "vllm_ascend.patch.platform" "${vllm_dir}/tests/conftest.py"; then
+    sed -i '5i\import vllm_ascend.patch.platform\nimport vllm_ascend.patch.worker' "${vllm_dir}/tests/conftest.py"
+  fi
+  pip uninstall -y triton >/dev/null 2>&1 || true
+  export PYTORCH_NPU_ALLOC_CONF=max_split_size_mb:256
+  export VLLM_WORKER_MULTIPROC_METHOD=spawn
+  export TORCH_DEVICE_BACKEND_AUTOLOAD=0
+  vllm_upstream_ready=1
+}
 
 setup_coverage() {
   local target="$1"
@@ -170,8 +196,15 @@ print_summary() {
 
 run_pytest_target() {
   local target="$1"
+  local pytest_target="${target}"
+  local workdir="${project_root}"
+  if [ "${target#vllm://}" != "${target}" ]; then
+    pytest_target="${target#vllm://}"
+    workdir="${project_root}/vllm-empty"
+    setup_vllm_upstream
+  fi
   test_index=$((test_index + 1))
-  local log_name="${target}"
+  local log_name="${pytest_target}"
   log_name="${log_name#tests/}"
   log_name="${log_name%.py}"
   log_name="${log_name//[^a-zA-Z0-9_.-]/_}"
@@ -183,12 +216,18 @@ run_pytest_target() {
     start_time=$(date +%s%N)
   fi
   if [ "${enable_coverage}" = "true" ]; then
-    setup_coverage "${target}"
+    setup_coverage "${pytest_target}"
     set +e
-    run_logged_command "${log_file}" python -m coverage run --rcfile="${project_root}/tests/coveragerc" -m pytest -sv --color=yes "${target}"
+    (
+      cd "${workdir}"
+      run_logged_command "${log_file}" python -m coverage run --rcfile="${project_root}/tests/coveragerc" -m pytest -sv --color=yes "${pytest_target}"
+    )
   else
     set +e
-    run_logged_command "${log_file}" pytest -sv --color=yes "${target}"
+    (
+      cd "${workdir}"
+      run_logged_command "${log_file}" pytest -sv --color=yes "${pytest_target}"
+    )
   fi
   local status=$?
   set -e

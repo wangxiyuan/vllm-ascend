@@ -33,10 +33,20 @@
 
 # === Curated Test Suites ===
 # Named test lists selected via ``select_tests.py --curated <name>``.
+# A suite is either a plain list of vllm-ascend test paths, or a mapping
+# with ``repo: vllm`` and ``tests:`` listing paths inside the pinned
+# vLLM checkout (``./vllm-empty``); those run there with the
+# vllm-ascend platform patches applied.
 curated_tests:
   # A5 (Ascend 950) curated test suite
   a5:
     - tests/e2e/pull_request/four_card/test_data_parallel_tp2.py
+  # vLLM upstream tests run against the pinned vLLM checkout
+  upstream_pr:
+    repo: vllm
+    tests:
+      - tests/v1/worker/test_mamba_utils.py
+      - tests/lora/test_lora_manager.py
 
 # === Skipped Tests ===
 # Removed from any selection after directory scanning.
@@ -177,6 +187,9 @@ estimated_times:
   tests/e2e/pull_request/one_card/test_w8a8_static.py: 40
   tests/e2e/pull_request/one_card/test_gumbel_sampling.py: 110
   tests/e2e/pull_request/one_card/test_model_runner_v1_with_device.py: 70
+  # vLLM upstream tests (run in the vLLM checkout, see curated_tests.upstream_pr)
+  tests/v1/worker/test_mamba_utils.py: 20
+  tests/lora/test_lora_manager.py: 20
 
 # === Pinned Routes ===
 # Applied after normal selection, skip filtering, and containment-aware

@@ -103,6 +103,14 @@ _DEFAULT_KEY: PartitionKey = "cpu-0"
 CPU_UT_BATCH_ALIAS = "cpu-ut"
 CPU_UT_BATCH_PATH = "tests/ut"
 
+# Targets from curated suites with ``repo: vllm`` (see test_config.yaml) run
+# against the pinned vLLM checkout (``./vllm-empty``) instead of this repo.
+# They are emitted with this prefix so run_selected_tests.sh can tell them
+# apart, and they always route to this partition (910B single-card pool,
+# matching the runner pool the upstream tests historically used).
+VLLM_REPO_TARGET_PREFIX = "vllm://"
+VLLM_UPSTREAM_PARTITION: PartitionKey = "a2-1"
+
 # Full-suite mode roots scanned by --all-tests.
 _ALL_TESTS_ROOTS = ("tests/ut", "tests/e2e/pull_request")
 
@@ -449,14 +457,27 @@ def _load_pinned_routes(meta: dict) -> dict[str, PartitionKey]:
 def _load_curated_tests(meta: dict) -> dict[str, list[str]]:
     """Load curated test suites from the config meta dict.
 
-    Each ``curated_tests`` key names a suite; the value is a list of test
-    paths routed through the explicit-target flow by ``--curated``.
+    Each ``curated_tests`` key names a suite. A suite is either a plain list
+    of test paths in this repo, or a mapping with ``repo: vllm`` whose
+    ``tests:`` list holds paths inside the pinned vLLM checkout; those are
+    emitted prefixed with ``VLLM_REPO_TARGET_PREFIX`` and routed to
+    ``VLLM_UPSTREAM_PARTITION``.
     """
     result: dict[str, list[str]] = {}
-    for name, tests in (meta.get("curated_tests", {}) or {}).items():
+    for name, suite in (meta.get("curated_tests", {}) or {}).items():
+        if isinstance(suite, dict):
+            repo = suite.get("repo")
+            tests = suite.get("tests")
+            if repo != "vllm":
+                raise ValueError(f"Curated suite {name!r} has unsupported repo: {repo!r} (expected 'vllm')")
+        else:
+            tests = suite
         if not isinstance(tests, list) or not all(isinstance(t, str) and t for t in tests):
             raise ValueError(f"Curated suite {name!r} must define a non-empty list of test paths")
-        result[str(name)] = [_as_posix_path(t.rstrip("/")) for t in tests]
+        paths = [_as_posix_path(t.rstrip("/")) for t in tests]
+        if isinstance(suite, dict):
+            paths = [VLLM_REPO_TARGET_PREFIX + p for p in paths]
+        result[str(name)] = paths
     return result
 
 
@@ -558,6 +579,9 @@ def _lookup_estimated_time(
     File/nodeid containment is resolved by :func:`_dedup_groups` before this
     lookup is used. A nodeid selected on its own retains its exact estimate.
     """
+    # vLLM-checkout targets are estimated under their unprefixed path.
+    if test_name.startswith(VLLM_REPO_TARGET_PREFIX):
+        test_name = test_name[len(VLLM_REPO_TARGET_PREFIX) :]
     val = estimated_times.get(test_name)
     if val is not None:
         return val
@@ -826,6 +850,11 @@ def main():
             sys.exit(1)
         matched_modules = [args.curated]
         for target in curated_tests[args.curated]:
+            if target.startswith(VLLM_REPO_TARGET_PREFIX):
+                # vLLM-checkout target: it only exists in ./vllm-empty, so
+                # the usual _is_test_path/existence checks do not apply.
+                all_groups[VLLM_UPSTREAM_PARTITION].append(target)
+                continue
             _route_explicit_test_target(target, all_groups)
 
     _dedup_groups(all_groups)

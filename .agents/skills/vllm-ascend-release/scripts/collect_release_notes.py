@@ -187,7 +187,11 @@ def load_fragments(fragments_dir: Path) -> tuple[list[Entry], list[Path], list[s
         return [], [], [f"{fragments_dir}: fragments directory not found"]
 
     files = sorted(
-        (p for p in fragments_dir.iterdir() if p.suffix.lower() in (".yaml", ".yml") and p.stem != "TEMPLATE"),
+        (
+            p
+            for p in fragments_dir.iterdir()
+            if p.is_file() and p.suffix.lower() in (".yaml", ".yml") and p.stem != "TEMPLATE"
+        ),
         key=fragment_sort_key,
     )
     entries: list[Entry] = []
